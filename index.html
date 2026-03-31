@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>IdeaSwipe</title>
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
+    <!-- Styles -->
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div id="app">
+        <!-- Desktop/Tablet Top Navigation -->
+        <nav class="top-nav">
+            <div class="logo">
+                <i class="ti ti-swatch"></i> IdeaSwipe
+            </div>
+            <div class="nav-links">
+                <a href="#home" class="nav-link active" data-target="home"><i class="ti ti-home"></i> <span>Home</span></a>
+                <a href="#discover" class="nav-link" data-target="discover"><i class="ti ti-cards"></i> <span>Discover</span></a>
+                <a href="#post" class="nav-link" data-target="post"><i class="ti ti-circle-plus"></i> <span>Post</span></a>
+                <a href="#saved" class="nav-link" data-target="saved"><i class="ti ti-bookmark"></i> <span>Saved</span></a>
+                <a href="#messages" class="nav-link" data-target="messages"><i class="ti ti-message"></i> <span>Messages</span></a>
+                <a href="#profile" class="nav-link" data-target="profile"><i class="ti ti-user"></i> <span>Profile</span></a>
+            </div>
+        </nav>
+
+        <!-- Pages Container -->
+        <main class="pages-container">
+            <!-- Home Page -->
+            <section id="page-home" class="page active">
+               <div class="hero">
+                   <h1 class="gradient-text">Find ideas.<br>Build the future.</h1>
+                   <p>The marketplace where creators post brilliant concepts and builders bring them to life.</p>
+                   <div class="hero-actions">
+                       <button class="btn btn-primary" onclick="app.navigate('post')">I have an idea</button>
+                       <button class="btn btn-secondary" onclick="app.navigate('discover')"><i class="ti ti-cards"></i> Want to build</button>
+                   </div>
+               </div>
+               
+               <div class="home-sections">
+                   <div class="section-title">Trending Categories</div>
+                   <div class="category-tags" id="home-categories">
+                       <!-- Populated by JS -->
+                   </div>
+
+                   <div class="section-title">Featured Ideas</div>
+                   <div class="ideas-grid" id="featured-ideas">
+                       <!-- Populated by JS -->
+                   </div>
+               </div>
+            </section>
+
+            <!-- Discover Page -->
+            <section id="page-discover" class="page swipe-page">
+                <div class="discover-filters" id="discover-filters">
+                    <!-- Populated by JS -->
+                </div>
+                
+                <div class="swipe-area-wrapper">
+                    <div class="swipe-container" id="swipe-container">
+                        <!-- Cards injected here -->
+                        <div class="empty-card">
+                            <i class="ti ti-ghost"></i>
+                            <p>No more ideas! Check back later or adjust filters.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="swipe-actions">
+                    <button class="btn-action btn-skip" id="btn-skip"><i class="ti ti-x"></i></button>
+                    <button class="btn-action btn-superlike" id="btn-superlike" onclick="app.navigate('messages')"><i class="ti ti-message-circle"></i></button>
+                    <button class="btn-action btn-save" id="btn-save"><i class="ti ti-heart"></i></button>
+                </div>
+            </section>
+
+            <!-- Post Idea Page -->
+            <section id="page-post" class="page">
+                <div class="form-container">
+                    <h2 class="page-heading">Post a New Idea</h2>
+                    <p class="page-subheading">Share your concept with thousands of builders looking for their next project.</p>
+                    <form id="post-idea-form">
+                        <div class="form-group">
+                            <label>Idea Title</label>
+                            <input type="text" id="idea-title" placeholder="E.g., Tinder for Dog Walkers" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Short Description</label>
+                            <textarea id="idea-desc" rows="3" placeholder="Describe the core problem and solution..." required></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label>Core Problem it Solves</label>
+                            <textarea id="idea-problem" rows="2" placeholder="What pain point does this address?"></textarea>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Category</label>
+                                <select id="idea-category" required>
+                                    <option value="Startup">Startup</option>
+                                    <option value="Mobile App">Mobile App</option>
+                                    <option value="Web App">Web App</option>
+                                    <option value="AI Tool">AI Tool</option>
+                                    <option value="Research Platform">Research Platform</option>
+                                    <option value="SaaS">SaaS</option>
+                                    <option value="Marketplace">Marketplace</option>
+                                    <option value="Productivity">Productivity</option>
+                                    <option value="Education">Education</option>
+                                    <option value="Health">Health</option>
+                                    <option value="Finance">Finance</option>
+                                    <option value="Social">Social</option>
+                                    <option value="Developer Tool">Developer Tool</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>Difficulty</label>
+                                <select id="idea-difficulty">
+                                    <option value="Beginner">Beginner</option>
+                                    <option value="Intermediate">Intermediate</option>
+                                    <option value="Advanced">Advanced</option>
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <div class="form-row">
+                             <div class="form-group">
+                                <label>Estimated Build Time</label>
+                                <select id="idea-time">
+                                    <option value="1 Weekend">1 Weekend</option>
+                                    <option value="1-2 Weeks">1-2 Weeks</option>
+                                    <option value="1 Month">1 Month</option>
+                                    <option value="3+ Months">3+ Months</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>Target Users</label>
+                                <input type="text" id="idea-users" placeholder="E.g., College Students">
+                            </div>
+                        </div>
+                        
+                        <div class="form-row">
+                             <div class="form-group">
+                                <label>Monetization Strategy</label>
+                                <select id="idea-monetization">
+                                    <option value="SaaS/Subscription">SaaS / Subscription</option>
+                                    <option value="Ads/Sponsorships">Ads / Sponsorships</option>
+                                    <option value="One-Time Purchase">One-Time Purchase</option>
+                                    <option value="Freemium">Freemium</option>
+                                    <option value="Marketplace Fee">Marketplace Fee</option>
+                                    <option value="Free/Open Source">Free / Open Source</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>Contact Preference</label>
+                                <select id="idea-contact">
+                                    <option value="Email">Email Me</option>
+                                    <option value="In-App Messaging">In-App Chat Only</option>
+                                    <option value="Twitter/X">Twitter/X DM</option>
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label>Tags (comma separated)</label>
+                            <input type="text" id="idea-tags" placeholder="react, machine learning, finance">
+                        </div>
+
+                        <div class="form-group">
+                            <label>Optional Sketch / Wireframe</label>
+                            <input type="file" id="idea-image" accept="image/*" style="padding: 0.5rem; background: var(--bg-surface);">
+                            <small class="text-muted" style="display:block; margin-top:0.3rem">Upload a quick sketch to show builders what you mean.</small>
+                        </div>
+                        
+                        <button type="submit" class="btn btn-primary btn-block btn-lg mt-4">Publish to Network</button>
+                    </form>
+                </div>
+            </section>
+
+            <!-- Saved Ideas Page -->
+            <section id="page-saved" class="page">
+                <div class="page-header">
+                    <h2 class="page-heading">Saved Ideas</h2>
+                </div>
+                <div class="tabs">
+                    <button class="tab-btn active" data-tab="saved">Saved</button>
+                    <button class="tab-btn" data-tab="contacted">Contacted</button>
+                    <button class="tab-btn" data-tab="developing">Developing</button>
+                </div>
+                <div class="ideas-grid" id="saved-ideas-list">
+                    <!-- Populated by JS -->
+                </div>
+            </section>
+
+            <!-- Messages Page -->
+            <section id="page-messages" class="page">
+                <div class="page-header">
+                    <h2 class="page-heading">Messages</h2>
+                </div>
+                <div class="messages-list" id="messages-list">
+                    <!-- Populated by JS -->
+                </div>
+            </section>
+
+            <!-- Profile Page -->
+            <section id="page-profile" class="page">
+                <div class="profile-header">
+                    <div class="avatar-large">
+                        <img src="https://ui-avatars.com/api/?name=Alex+Builder&background=0D8ABC&color=fff&size=100" alt="Avatar">
+                    </div>
+                    <div class="profile-info">
+                        <h2 class="page-heading">Alex Builder</h2>
+                        <p class="text-muted">Full-stack dev looking for AI & SaaS projects. Let's build something awesome together.</p>
+                        <div class="profile-stats">
+                            <div class="stat"><span class="val" id="profile-saves">0</span><span class="label">Saves</span></div>
+                            <div class="stat"><span class="val" id="profile-posted">0</span><span class="label">Posted</span></div>
+                            <div class="stat"><span class="val">1</span><span class="label">Building</span></div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="profile-section">
+                    <h3>My Skills</h3>
+                    <div class="category-tags">
+                        <span class="tag">Next.js</span>
+                        <span class="tag">React</span>
+                        <span class="tag">TypeScript</span>
+                        <span class="tag">Node.js</span>
+                        <span class="tag">PostgreSQL</span>
+                    </div>
+                </div>
+
+                <div class="profile-section">
+                    <h3>My Posted Ideas</h3>
+                    <div class="ideas-grid" id="profile-posted-ideas">
+                        <!-- Populated by JS -->
+                    </div>
+                </div>
+            </section>
+        </main>
+        
+        <!-- Mobile Bottom Nav -->
+        <nav class="bottom-nav">
+             <a href="#home" class="nav-link active" data-target="home"><i class="ti ti-home"></i><span>Home</span></a>
+             <a href="#discover" class="nav-link" data-target="discover"><i class="ti ti-cards"></i><span>Swipe</span></a>
+             <a href="#post" class="nav-link" data-target="post"><i class="ti ti-circle-plus"></i><span>Post</span></a>
+             <a href="#saved" class="nav-link" data-target="saved"><i class="ti ti-bookmark"></i><span>Saved</span></a>
+             <a href="#profile" class="nav-link" data-target="profile"><i class="ti ti-user"></i><span>Profile</span></a>
+        </nav>
+        
+        <!-- Details Modal -->
+        <div class="modal" id="idea-modal">
+            <div class="modal-overlay"></div>
+            <div class="modal-content">
+                <button class="modal-close"><i class="ti ti-x"></i></button>
+                <div class="modal-body" id="idea-modal-body">
+                    <!-- Details will be injected -->
+                </div>
+            </div>
+        </div>
+        
+        <!-- Toast Notification -->
+        <div class="toast" id="toast">Message here</div>
+    </div>
+    
+    <script src="app.js"></script>
+</body>
+</html>
