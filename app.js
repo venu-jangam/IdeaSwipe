@@ -27,6 +27,7 @@ let state = {
     ideas: [...MOCK_IDEAS],
     savedIds: new Set(),
     contactedIds: new Set(),
+    collabIds: new Set(),
     postedIdeas: [],
     swipeQueue: [],
     currentFilter: 'All'
@@ -39,23 +40,47 @@ const storage = {
             user: state.user,
             savedIds: Array.from(state.savedIds),
             contactedIds: Array.from(state.contactedIds),
-            postedIdeas: state.postedIdeas,
-            ideas: state.ideas // Persist status changes
+            collabIds: Array.from(state.collabIds || []),
+            postedIdeas: state.postedIdeas
         };
-        localStorage.setItem(`orbitIdeas_${state.user.id}`, JSON.stringify(data));
+        localStorage.setItem(`orbitIdeas_u_${state.user.id}`, JSON.stringify(data));
         localStorage.setItem('orbitIdeas_session', state.user.id);
+        
+        // Save current user's posted ideas to the GLOBAL feed
+        const globalIdeas = JSON.parse(localStorage.getItem('orbitIdeas_global') || '[]');
+        state.postedIdeas.forEach(p => {
+            if (!globalIdeas.find(gi => gi.id === p.id)) {
+                globalIdeas.push(p);
+            }
+        });
+        localStorage.setItem('orbitIdeas_global', JSON.stringify(globalIdeas));
     },
     load() {
         const id = localStorage.getItem('orbitIdeas_session');
+        const globalIdeas = JSON.parse(localStorage.getItem('orbitIdeas_global') || '[]');
+        
+        // Combine MOCK + Global Share
+        state.ideas = [...MOCK_IDEAS];
+        globalIdeas.forEach(gi => {
+            if (!state.ideas.find(i => i.id === gi.id)) {
+                state.ideas.push(gi);
+            }
+        });
+
         if (!id) return;
-        const data = JSON.parse(localStorage.getItem(`orbitIdeas_${id}`));
+        const data = JSON.parse(localStorage.getItem(`orbitIdeas_u_${id}`));
         if (data) {
             state.user = data.user;
             state.isAuthenticated = true;
             state.savedIds = new Set(data.savedIds);
             state.contactedIds = new Set(data.contactedIds);
+            state.collabIds = new Set(data.collabIds || []);
             state.postedIdeas = data.postedIdeas || [];
-            state.ideas = data.ideas || [...MOCK_IDEAS];
+            
+            // Sync posted ideas back to main pool if not there
+            state.postedIdeas.forEach(p => {
+                if (!state.ideas.find(i => i.id === p.id)) state.ideas.push(p);
+            });
         }
     },
     clear() {
@@ -76,6 +101,16 @@ const app = {
         
         const hash = window.location.hash.slice(1) || 'home';
         this.navigate(hash);
+
+        // Parallax Effect
+        document.addEventListener('mousemove', (e) => {
+            const x = (e.clientX / window.innerWidth) - 0.5;
+            const y = (e.clientY / window.innerHeight) - 0.5;
+            const starfield = document.querySelector('.starfield::before');
+            // We can't select pseudo-elements directly in JS, so we move the parent or use a CSS variable
+            document.documentElement.style.setProperty('--px', `${x * 20}px`);
+            document.documentElement.style.setProperty('--py', `${y * 20}px`);
+        });
     },
 
     navigate(pageId) {
@@ -254,6 +289,7 @@ const app = {
         const card = document.createElement('div');
         card.className = 'swipe-card';
         card.innerHTML = `
+            <div class="scan-line"></div>
             <div class="stamp stamp-nope">IGNORE</div>
             <div class="stamp stamp-like">RETAIN</div>
             <div class="card-category">${i.category}</div>
@@ -265,7 +301,7 @@ const app = {
                 <div class="card-stat"><i class="ti ti-rocket"></i> <span>${i.difficulty}</span></div>
                 <div class="card-stat"><i class="ti ti-clock"></i> <span>${i.time}</span></div>
             </div>
-            <div style="margin-top:auto; padding-top:2rem; border-top:1px solid var(--cosmos-border); text-align:center; color:var(--primary); cursor:pointer;" onclick="app.openModal(${i.id})">
+            <div style="margin-top:auto; padding-top:2rem; border-top:1px solid var(--cosmos-border); text-align:center; color:var(--primary); cursor:pointer; font-weight:700; letter-spacing:1px;" onclick="app.openModal(${i.id})">
                 MISSION DETAILS <i class="ti ti-chevron-down"></i>
             </div>
         `;
@@ -322,24 +358,46 @@ const app = {
         }, 300);
     },
 
-    // --- Details ---
     openModal(id) {
-        const i = state.ideas.find(idea => idea.id === id) || state.postedIdeas.find(p => p.id === id);
+        const i = state.ideas.find(idea => idea.id === id);
         if(!i) return;
         const b = document.getElementById('idea-modal-body');
+        const isOwner = state.user && i.poster === state.user.name;
+        
         b.innerHTML = `
             <div class="card-category">${i.category} • ${i.type}</div>
-            <h2 style="font-size:2.5rem; margin-top:1rem;">${i.title}</h2>
-            <p style="font-size:1.2rem; color:var(--text-muted); margin:1.5rem 0;">${i.desc}</p>
-            <div class="dashboard-grid" style="grid-template-columns:1fr 1fr; gap:1.5rem;">
-                <div class="idea-item-card"><small class="text-dim">Difficulty</small><div>${i.difficulty}</div></div>
-                <div class="idea-item-card"><small class="text-dim">Est. Time</small><div>${i.time}</div></div>
-                <div class="idea-item-card"><small class="text-dim">Current Stage</small><div>${i.stage || 'Concept'}</div></div>
-                <div class="idea-item-card"><small class="text-dim">Transmitted By</small><div>${i.poster}</div></div>
+            <h2 style="font-size:2.8rem; margin:1.5rem 0; background:linear-gradient(135deg, #fff, var(--primary)); -webkit-background-clip:text; -webkit-text-fill-color:transparent;">${i.title}</h2>
+            <p style="font-size:1.2rem; color:var(--text-muted); line-height:1.7; margin-bottom:2.5rem;">${i.desc}</p>
+            
+            <div class="dashboard-grid" style="grid-template-columns:repeat(2, 1fr); gap:1.2rem; margin-bottom:2.5rem;">
+                <div class="idea-item-card" style="padding:1.2rem; background:rgba(255,255,255,0.03);">
+                    <small class="text-dim" style="text-transform:uppercase; font-size:0.7rem; letter-spacing:1px;">Difficulty</small>
+                    <div style="font-weight:600; color:var(--primary);">${i.difficulty}</div>
+                </div>
+                <div class="idea-item-card" style="padding:1.2rem; background:rgba(255,255,255,0.03);">
+                    <small class="text-dim" style="text-transform:uppercase; font-size:0.7rem; letter-spacing:1px;">Est. Time</small>
+                    <div style="font-weight:600; color:var(--primary);">${i.time}</div>
+                </div>
+                <div class="idea-item-card" style="padding:1.2rem; background:rgba(255,255,255,0.03);">
+                    <small class="text-dim" style="text-transform:uppercase; font-size:0.7rem; letter-spacing:1px;">Stage</small>
+                    <div style="font-weight:600; color:var(--primary);">${i.stage || 'Concept'}</div>
+                </div>
+                <div class="idea-item-card" style="padding:1.2rem; background:rgba(255,255,255,0.03);">
+                    <small class="text-dim" style="text-transform:uppercase; font-size:0.7rem; letter-spacing:1px;">Commander</small>
+                    <div style="font-weight:600; color:var(--secondary);">${i.poster} ${isOwner ? '(You)' : ''}</div>
+                </div>
             </div>
-            <div style="margin-top:2.5rem;">
-                <button class="btn btn-primary btn-block" onclick="app.sendSignal(${i.id})"><i class="ti ti-satellite"></i> Transmit Signal to Poster</button>
+
+            ${!isOwner ? `
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:1rem;">
+                <button class="btn btn-primary" onclick="app.buildOver(${i.id})"><i class="ti ti-hammer"></i> Build Over This</button>
+                <button class="btn btn-secondary" onclick="app.sendSignal(${i.id})"><i class="ti ti-satellite"></i> Message Owner</button>
             </div>
+            ` : `
+            <div class="alert" style="padding:1rem; background:rgba(16, 185, 129, 0.1); border:1px solid rgba(16, 185, 129, 0.2); border-radius:var(--radius-md); text-align:center; color:var(--success);">
+                <i class="ti ti-check"></i> This is your transmitted concept.
+            </div>
+            `}
         `;
         document.getElementById('idea-modal').classList.add('open');
     },
@@ -351,6 +409,16 @@ const app = {
         this.showToast('Signal transmitted via satellite.');
         storage.save();
         this.navigate('messages');
+    },
+
+    buildOver(id) {
+        if (!state.isAuthenticated) return this.showAuthModal();
+        if (!state.collabIds) state.collabIds = new Set();
+        state.collabIds.add(id);
+        this.hideModals();
+        this.showToast('Mission expansion initiated. Check Dashboard.');
+        storage.save();
+        this.navigate('dashboard');
     },
 
     // --- Dashboards ---
@@ -383,6 +451,7 @@ const app = {
         let displayIdeas = [];
         if (activeTab === 'saved') displayIdeas = state.ideas.filter(i => state.savedIds.has(i.id));
         if (activeTab === 'posted') displayIdeas = state.postedIdeas;
+        if (activeTab === 'collaborating') displayIdeas = state.ideas.filter(i => state.collabIds.has(i.id));
 
         if (displayIdeas.length === 0) {
             list.innerHTML = `<div style="grid-column:1/-1; text-align:center; padding:4rem;"><i class="ti ti-atom-off" style="font-size:3rem; color:var(--text-dim);"></i><p style="color:var(--text-muted); margin-top:1rem;">No data in this archive sector.</p></div>`;
@@ -416,6 +485,7 @@ const app = {
         document.getElementById('profile-page-bio').textContent = state.user.bio;
         document.getElementById('profile-saves-count').textContent = state.savedIds.size;
         document.getElementById('profile-posted-count').textContent = state.postedIdeas.length;
+        document.getElementById('profile-collab-count').textContent = state.collabIds ? state.collabIds.size : 0;
         document.getElementById('profile-interests-display').innerHTML = state.user.interests.map(i => `<span class="badge" style="margin-right:0.5rem; margin-bottom:0.5rem;">${i}</span>`).join('');
     },
 
