@@ -329,3 +329,43 @@ input:focus, textarea:focus, select:focus { outline: none; border-color: var(--v
     .chat-layout { flex-direction: column; }
     .chat-sidebar { width: 100%; border-right: none; border-bottom: 1px solid var(--border-color); max-height: 200px; }
 }
+
+/* Avatar Selection */
+.avatar-grid { 
+    display: flex; 
+    flex-wrap: wrap; 
+    gap: 8px; 
+    margin-top: 10px; 
+    justify-content: center;
+}
+.avatar-option { 
+    width: 45px; 
+    height: 45px; 
+    border-radius: 50%; 
+    cursor: pointer; 
+    border: 2px solid transparent; 
+    transition: all 0.2s; 
+    padding: 2px; 
+    background: var(--bg-card); 
+    box-shadow: var(--shadow-soft);
+    animation: floatAvatar 3s ease-in-out infinite; 
+}
+.avatar-option:hover { 
+    transform: scale(1.1); 
+    animation: none; 
+}
+.avatar-option.active { 
+    border-color: var(--teal); 
+    background: var(--teal-glow); 
+    animation: none; 
+    transform: scale(1.15); 
+}
+
+/* Stagger floating */
+.avatar-option:nth-child(even) { animation-delay: 1.5s; }
+.avatar-option:nth-child(3n) { animation-delay: 0.7s; }
+
+@keyframes floatAvatar {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-3px); }
+}
