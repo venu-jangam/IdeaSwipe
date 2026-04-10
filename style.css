@@ -1,18 +1,18 @@
 :root {
     /* LIGHT THEME VARIABLES (Default) */
-    --bg-base: #FAFBFF;
-    --bg-card: #F0F2FF;
-    --bg-elevated: #ffffff;
-    --text-main: #0B0E2D;
-    --text-muted: #4f5a7a;
-    --border-color: rgba(123, 94, 167, 0.2);
+    --bg-base: #FFFFFF;
+    --bg-card: #F4F6FB;
+    --bg-elevated: #FFFFFF;
+    --text-main: #05081A;
+    --text-muted: #3D4868;
+    --border-color: rgba(123, 94, 167, 0.4);
     
     /* Cosmic Accents */
-    --violet: #7B5EA7;
+    --violet: #5a3e85;
     --violet-glow: rgba(123, 94, 167, 0.15);
-    --teal: #00C9B1;
+    --teal: #00A38F;
     --teal-glow: rgba(0, 201, 177, 0.15);
-    --gold: #FFD166;
+    --gold: #D4A017;
     --danger: #ff4757;
     --success: #2ed573;
     

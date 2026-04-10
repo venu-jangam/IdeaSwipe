@@ -162,19 +162,46 @@ let state = {
     collabs: new Set(),
     myLaunches: [],
     swipeQueue: [],
-    filter: 'All'
+    filter: 'All',
+    searchQuery: ''
 };
+
+// === FIREBASE CONFIGURATION ===
+// Insert your Firebase config below to enable seamless cloud syncing across devices!
+const firebaseConfig = {
+    // apiKey: "YOUR_API_KEY",
+    // authDomain: "YOUR_AUTH_DOMAIN",
+    // projectId: "YOUR_PROJECT_ID",
+    // storageBucket: "YOUR_STORAGE_BUCKET",
+    // messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
+    // appId: "YOUR_APP_ID"
+};
+
+let db = null;
+let authObj = null;
+try {
+    if (typeof firebase !== 'undefined' && firebaseConfig.apiKey) {
+        firebase.initializeApp(firebaseConfig);
+        db = firebase.firestore();
+        authObj = firebase.auth();
+        console.log("Firebase systems online.");
+    }
+} catch(e) { console.warn("Firebase config missing. Operating in offline LocalStorage mode."); }
+
 
 const storage = {
     save() {
         localStorage.setItem('orbitApp_theme', state.theme);
         if(!state.auth) return;
-        localStorage.setItem(`orbitApp_u_${state.user.id}`, JSON.stringify({
+        
+        const userData = {
             user: state.user,
             swiped: { right: Array.from(state.swiped.right), left: Array.from(state.swiped.left), saved: Array.from(state.swiped.saved) },
             collabs: Array.from(state.collabs),
             myLaunches: state.myLaunches
-        }));
+        };
+        
+        localStorage.setItem(`orbitApp_u_${state.user.id}`, JSON.stringify(userData));
         localStorage.setItem('orbitApp_session', state.user.id);
         
         let global = JSON.parse(localStorage.getItem('orbitApp_global') || '[]');
@@ -182,8 +209,14 @@ const storage = {
             if(!global.find(g => g.id === ml.id)) global.push(ml);
         });
         localStorage.setItem('orbitApp_global', JSON.stringify(global));
+
+        // Firebase Sync
+        if (db && state.user) {
+            db.collection('users').doc(state.user.id).set(userData).catch(console.error);
+            state.myLaunches.forEach(ml => db.collection('ideas').doc(ml.id.toString()).set(ml));
+        }
     },
-    load() {
+    async load() {
         state.theme = localStorage.getItem('orbitApp_theme') || 'light';
         document.documentElement.setAttribute('data-theme', state.theme);
         
@@ -191,25 +224,49 @@ const storage = {
         state.ideas = [...MOCK_IDEAS];
         global.forEach(g => { if(!state.ideas.find(i => i.id === g.id)) state.ideas.push(g); });
 
+        // Load remote ideas if Firebase active
+        if (db) {
+            try {
+                const snap = await db.collection('ideas').get();
+                snap.forEach(doc => {
+                    const idea = doc.data();
+                    if(!state.ideas.find(i => i.id === idea.id)) state.ideas.push(idea);
+                });
+            } catch(e) { console.error("Error fetching ideas.", e); }
+        }
+
         const sid = localStorage.getItem('orbitApp_session');
         if(sid) {
-            const data = JSON.parse(localStorage.getItem(`orbitApp_u_${sid}`));
-            if(data) {
-                state.user = data.user;
-                state.swiped = { right: new Set(data.swiped.right), left: new Set(data.swiped.left), saved: new Set(data.swiped.saved) };
-                state.collabs = new Set(data.collabs);
-                state.myLaunches = data.myLaunches || [];
-                state.auth = true;
-                
-                state.myLaunches.forEach(ml => { if(!state.ideas.find(i => i.id === ml.id)) state.ideas.push(ml); });
+            // First try local
+            const localData = JSON.parse(localStorage.getItem(`orbitApp_u_${sid}`));
+            if(localData) this.applyUserData(localData);
+            
+            // Then sync from Firebase if available
+            if(db) {
+                try {
+                    const doc = await db.collection('users').doc(sid).get();
+                    if(doc.exists) {
+                        this.applyUserData(doc.data());
+                        if (app && app.updateUI) app.updateUI();
+                    }
+                } catch(e) { console.error(e); }
             }
         }
+    },
+    applyUserData(data) {
+        state.user = data.user;
+        state.swiped = { right: new Set(data.swiped.right), left: new Set(data.swiped.left), saved: new Set(data.swiped.saved) };
+        state.collabs = new Set(data.collabs);
+        state.myLaunches = data.myLaunches || [];
+        state.auth = true;
+        state.myLaunches.forEach(ml => { if(!state.ideas.find(i => i.id === ml.id)) state.ideas.push(ml); });
     },
     logout() {
         localStorage.removeItem('orbitApp_session');
         state.auth = false; state.user = null;
         state.swiped = { right: new Set(), left: new Set(), saved: new Set() };
         state.collabs = new Set(); state.myLaunches = [];
+        if(authObj) authObj.signOut();
     }
 };
 
@@ -235,6 +292,15 @@ const app = {
             if(e.key === 'ArrowRight') this.handleSwipeChoice('right');
             if(e.key === 'ArrowUp' || e.key.toLowerCase() === 's') this.handleSwipeChoice('up');
         });
+
+        // Search Discover Logic
+        const searchInput = document.getElementById('discover-search');
+        if(searchInput) {
+            searchInput.addEventListener('input', (e) => {
+                state.searchQuery = e.target.value.toLowerCase();
+                this.refillSwipeQueue();
+            });
+        }
 
         // Input limits
         const title = document.getElementById('idea-title'), tCount = document.getElementById('title-char-count');
@@ -330,10 +396,27 @@ const app = {
                 firstName: f, lastName: l,
                 username: `astro_${f}_${l}`.replace(/\s+/g,'').toLowerCase(),
                 role: '💡 Idea Giver', interests: [], bio: '',
-                avatar: `https://api.dicebear.com/7.x/pixel-art/svg?seed=${f}${l}`
+                avatar: `https://api.dicebear.com/7.x/bottts/svg?seed=${f}${l}`
             };
             
             document.getElementById('ob-username').value = state.user.username;
+            
+            // Populate Avatar Selectors
+            const ag = document.getElementById('ob-avatar-grid');
+            if(ag) {
+                const botttSeeds = ['Apollo', 'Artemis', 'Ares', 'Orion', 'Luna', 'Nova', 'Cosmo', 'Astro', 'Leo', 'Lyra', 'Rigel', 'Vega', 'Sirius', 'Comet', 'Atlas', 'Titan', 'Europa', 'Io', 'Deimos', 'Phobos'];
+                ag.innerHTML = botttSeeds.map(seed => `<img src="https://api.dicebear.com/7.x/bottts/svg?seed=${seed}&radius=50&backgroundColor=E6F3FF" class="avatar-option" data-url="https://api.dicebear.com/7.x/bottts/svg?seed=${seed}&radius=50&backgroundColor=E6F3FF" alt="avatar">`).join('');
+                
+                const avatars = ag.querySelectorAll('.avatar-option');
+                avatars.forEach((av, idx) => {
+                    if(idx === 0) av.classList.add('active'); // default
+                    av.onclick = () => {
+                        avatars.forEach(a => a.classList.remove('active'));
+                        av.classList.add('active');
+                    };
+                });
+            }
+
             const obInt = document.getElementById('ob-interests');
             obInt.innerHTML = CATEGORIES.map(c => `<span class="filter-chip">${c}</span>`).join('');
             obInt.querySelectorAll('.filter-chip').forEach(c => c.onclick = () => c.classList.toggle('active'));
@@ -356,6 +439,9 @@ const app = {
             state.user.role = document.querySelector('#ob-role-selector .role-card.active').dataset.role;
             state.user.interests = Array.from(document.querySelectorAll('#ob-interests .filter-chip.active')).map(c => c.textContent);
             
+            const activeAvatar = document.querySelector('.avatar-option.active');
+            if(activeAvatar) state.user.avatar = activeAvatar.dataset.url;
+
             state.auth = true;
             this.hideModals();
             this.updateUI();
@@ -480,6 +566,14 @@ const app = {
             (!state.user || i.poster !== state.user.username)
         );
         if(state.filter !== 'All') pool = pool.filter(i => i.category === state.filter);
+        if(state.searchQuery) {
+            const sq = state.searchQuery;
+            pool = pool.filter(i => 
+                i.title.toLowerCase().includes(sq) || 
+                i.tagline.toLowerCase().includes(sq) || 
+                (i.tags && i.tags.some(t => t.toLowerCase().includes(sq)))
+            );
+        }
         state.swipeQueue = pool.sort(() => 0.5 - Math.random());
         this.loadNextSwipeCard();
     },
